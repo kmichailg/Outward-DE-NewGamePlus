@@ -1,30 +1,16 @@
-﻿// MyMod.cs
-
-/*   -------------  TODO LIST  -------------
- *   
- *   
- *   
- *   -------------  TOLEARN LIST  -------------
- *   
- *   * Probably more stuff, but forgot
- *   
- *   -------------  TOFIX (eventually) LIST  -------------
- *   
- *   
- *   
- */
-
-using System;
-using BepInEx;
+﻿using BepInEx;
+using BepInEx.Configuration;
 using BepInEx.Logging;
-using System.Reflection;
 using HarmonyLib;
+using System;
 using System.Collections.Generic;
-using SharedModConfig;
-using SideLoader.SaveData;
+// using System.Linq;
+using System.Reflection;
+// using System.Text;
 using SideLoader;
+using SideLoader.SaveData;
 
-namespace NewGamePlus
+namespace NewGamePlusDE
 {
     public class Settings
     {
@@ -50,7 +36,7 @@ namespace NewGamePlus
 
         public override void Save(Character character, bool isWorldHost)
         {
-            if (NewGamePlus.SaveData.TryGetValue(character.UID, out NewGameExtension save))
+            if (Plugin.SaveData.TryGetValue(character.UID, out NewGameExtension save))
             {
                 LegacyLevel = save.LegacyLevel;
                 LegacySkills = save.LegacySkills;
@@ -59,30 +45,30 @@ namespace NewGamePlus
 
         public override void ApplyLoadedSave(Character character, bool isWorldHost)
         {
-            if (NewGamePlus.SaveData.ContainsKey(character.UID))
-                NewGamePlus.logboy.Log(LogLevel.Error, "Save Data already exists for " + character.Name);
-            NewGamePlus.SaveData[character.UID] = this;
+            if (Plugin.SaveData.ContainsKey(character.UID))
+                Plugin.logboy.Log(LogLevel.Error, "Save Data already exists for " + character.Name);
+            Plugin.SaveData[character.UID] = this;
 
-            NewGamePlus.logboy.Log(LogLevel.Message, "Loaded Legacy Level for " + character.Name + ": " + LegacyLevel);
+            Plugin.logboy.Log(LogLevel.Message, "Loaded Legacy Level for " + character.Name + ": " + LegacyLevel);
             if (LegacySkills?.Length > 0)
-                NewGamePlus.logboy.Log(LogLevel.Message, "Loaded LegacySkills for " + character.Name + ": " + LegacySkills.Length);
+                Plugin.logboy.Log(LogLevel.Message, "Loaded LegacySkills for " + character.Name + ": " + LegacySkills.Length);
         }
 
         public static NewGameExtension CreateExtensionFor(string UID)
         {
-            if (!NewGamePlus.SaveData.TryGetValue(UID, out NewGameExtension nge))
+            if (!Plugin.SaveData.TryGetValue(UID, out NewGameExtension nge))
             {
                 nge = TryLoadExtension<NewGameExtension>(UID);
                 if (nge == null)
                     nge = new NewGameExtension();
-                NewGamePlus.SaveData[UID] = nge;
+                Plugin.SaveData[UID] = nge;
             }
             return nge;
         }
 
         public static int GetLegacyLevelFor(string UID)
         {
-            if (NewGamePlus.SaveData.TryGetValue(UID, out NewGameExtension nge))
+            if (Plugin.SaveData.TryGetValue(UID, out NewGameExtension nge))
                 return nge.LegacyLevel;
 
             int ret = 0;
@@ -90,91 +76,73 @@ namespace NewGamePlus
             if (nge != null)
             {
                 ret = nge.LegacyLevel;
-                NewGamePlus.SaveData.Remove(UID);
+                Plugin.SaveData.Remove(UID);
             }
             return ret;
         }
     }
 
-    [BepInPlugin(ID, NAME, VERSION)]
-    [BepInDependency("com.sinai.SharedModConfig", BepInDependency.DependencyFlags.HardDependency)]
-    public class NewGamePlus : BaseUnityPlugin
+    [BepInPlugin(GUID, NAME, VERSION)]
+    public class Plugin : BaseUnityPlugin
     {
-        const string ID = "com.random_facades.newgameplus";
-        const string NAME = "New Game+";
-        const string VERSION = "1.2";
-        //  Can't be fancy cause localization issues
-        //public static double VersionNum = double.Parse(VERSION);
-        public static double VersionNum = 1.2;
+        // Choose a GUID for your project. Change "myname" and "mymod".
+        public const string GUID = "com.kmichailg.newgameplusde";
+        // Choose a NAME for your project, generally the same as your Assembly Name.
+        public const string NAME = "New Game +";
+        // Increment the VERSION when you release a new version of your mod.
+        public const string VERSION = "1.0.0";
 
-        public static ModConfig config;
+        // For accessing your BepInEx Logger from outside of this class (eg Plugin.Log.LogMessage("");)
+        internal static ManualLogSource Log;
+
+        // If you need settings, define them like so:
+        public static ConfigEntry<bool> cfgIsEnabled;
+        public static ConfigEntry<bool> cfgIsDeleteKeys;
+        public static ConfigEntry<bool> cfgIsTransferExalted;
+
+        public static bool setMaxStats = false;
 
         const BindingFlags FLAGS = BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Static;
 
         public static Dictionary<string, NewGameExtension> SaveData = new Dictionary<string, NewGameExtension>();
-        public static NewGamePlus Instance;
+        public static Plugin Instance;
         public static NewGameExtension SaveExt;
-
+        
+        // Awake is called when your plugin is created. Use this to set up your mod.
         internal void Awake()
         {
+            cfgIsEnabled = Config.Bind("Settings", Settings.TransferExalted_Name, false, "Transfer Exalted & Life Drain on Creation");
+            cfgIsDeleteKeys = Config.Bind("Legacy Character Creation Settings", Settings.DisableNG_Name, false, "Disable Legacy Character Creation");
+            cfgIsTransferExalted = Config.Bind("Legacy Character Creation Settings", Settings.DeleteKeys_Name, true, "Delete Keys on Creation");
+
             Instance = this;
-            logboy = Logger;
+            logboy = Log;
 
-            NG_StatusManager.InitializeEffects();
-            SL.OnPacksLoaded += NG_StatusManager.UpdateLevelData;
+            StatusManager.InitializeEffects();
+            SL.OnPacksLoaded += StatusManager.UpdateLevelData;
 
-            var harmony = new Harmony(ID);
+            // Harmony is for patching methods. If you're not patching anything, you can comment-out or delete this line.
+            // new Harmony(GUID).PatchAll();
+            // TODO: Use above implementation instead of below, check if no 'harmony' variable is used for subsequent calls.
+            var harmony = new Harmony(GUID);
             harmony.PatchAll();
 
-            config = SetupConfig();
-            config.Register();
             SettingsChanged();
-            config.OnSettingsSaved += SettingsChanged;
 
-            Log("New Game Plus starting...");
+            Plugin.logboy.Log(LogLevel.Info, "New Game Plus DE starting...");
         }
 
-        private ModConfig SetupConfig()
+        internal void Update()
         {
-            var newConfig = new ModConfig
-            {
-                ModName = NAME,
-                SettingsVersion = VersionNum,
-                Settings = new List<BBSetting>
-                {
-                    new BoolSetting
-                    {
-                        Name = Settings.DisableNG_Name,
-                        Description = "Disable Legacy Character Creation",
-                        DefaultValue = false
-                    },
-                    new BoolSetting
-                    {
-                        SectionTitle = "Legacy Character Creation Settings",
-                        Name = Settings.DeleteKeys_Name,
-                        Description = "Delete Keys on Creation",
-                        DefaultValue = true
-                    },
-                    new BoolSetting
-                    {
-                        Name = Settings.TransferExalted_Name,
-                        Description = "Transfer Exalted & Life Drain on Creation",
-                        DefaultValue = false
-                    }
-                }
-            };
-
-            return newConfig;
+            // N/A - Not used
         }
 
         public static void SettingsChanged()
         {
-            Settings.DisableNG = (bool)config.GetValue(Settings.DisableNG_Name);
-            Settings.DeleteKeys = (bool)config.GetValue(Settings.DeleteKeys_Name);
-            Settings.TransferExalted = (bool)config.GetValue(Settings.TransferExalted_Name);
+            Settings.DisableNG = (bool) cfgIsEnabled.Value;
+            Settings.DeleteKeys = (bool) cfgIsDeleteKeys.Value;
+            Settings.TransferExalted = (bool) cfgIsTransferExalted.Value;
         }
-
-        public static bool setMaxStats = false;
 
         public static void CreateNewCharacter()
         {
@@ -182,7 +150,6 @@ namespace NewGamePlus
             {
                 Character player = CharacterManager.Instance.GetFirstLocalCharacter();
                 NewGameExtension player_nge = NewGameExtension.CreateExtensionFor(player.UID);
-
 
                 // Two Options
                 //    Option1: 0.X Character with LegacyLevel set, but no PSE
@@ -200,8 +167,7 @@ namespace NewGamePlus
                 typeof(CharacterRecipeKnowledge).GetMethod("LoadLearntRecipe", FLAGS).Invoke(player.Inventory.RecipeKnowledge, new object[] { m_legacy.CharSave.PSave.RecipeSaves });
 
 
-                foreach (BasicSaveData data in itemList)
-                {
+                foreach (BasicSaveData data in itemList) {
                     Item item = ItemManager.Instance.GetItem(data.m_saveIdentifier.ToString());
                     if (item != null)
                     {
@@ -237,16 +203,20 @@ namespace NewGamePlus
                     }
                 }
 
-                foreach (BasicSaveData data in itemList)
-                {
+                foreach (BasicSaveData data in itemList) {
                     Item item = ItemManager.Instance.GetItem(data.m_saveIdentifier.ToString());
-                    if (item == null)
+                    if (item == null) {
                         logboy.Log(LogLevel.Error, "Couldn't get Item -- " + data.m_saveIdentifier.ToString());
-                    else if (!(item is Quest) && (!Settings.DeleteKeys || !(item.GetType() == typeof(Item)) || !item.Name.Contains("Key")))
-                    {
+                    } else if (
+                        !(item is Quest) &&
+                        (
+                            !Settings.DeleteKeys ||
+                            !(item.GetType() == typeof(Item)) ||
+                            !item.Name.Contains("Key")
+                        )
+                    ) {
                         int loc = data.SyncData.IndexOf("<Hierarchy>");
-                        if (loc != -1)
-                        {
+                        if (loc != -1) {
                             //logboy.Log(LogLevel.Message, "Item: " + item.GetType() + " - " + item.Name + " - " + item.name + " - " + data.SyncData);
                             int len = data.SyncData.IndexOf("<", loc + 11) - (loc + 11);
                             string type = data.SyncData.Substring(loc + 11, len);
@@ -261,8 +231,7 @@ namespace NewGamePlus
                                 clone.ChangeParent(player.Inventory.Pouch.transform);
                                 clone.ForceStartInit();
                             }
-                            else
-                            {
+                            else {
                                 switch (type[0])
                                 {
                                     case '1':
@@ -363,11 +332,6 @@ namespace NewGamePlus
                 }
             }
             return text;
-        }
-
-        public static void Log(string message)
-        {
-            logboy.Log(LogLevel.Message, message);
         }
 
         private static bool CharacterHasLegacySkill(Character character, Skill skill)
@@ -588,7 +552,7 @@ namespace NewGamePlus
                                     skills.Add(item.ItemID);
                             }
                             SaveData[player.UID].LegacySkills = skills.ToArray();
-                            Log("Loaded LegacySkills for " + player.Name + ": " + skills.Count);
+                            Plugin.logboy.Log(LogLevel.Info, "Loaded LegacySkills for " + player.Name + ": " + skills.Count);
                         }
 
                         // Check if debuffs exist, if not apply them
@@ -612,13 +576,13 @@ namespace NewGamePlus
             public static bool Prefix(SkillSlot __instance, ref bool __result, Character _character, ref bool _notify)
             {
                 // If you gained this skill as a legacy skill, then show it as blocked
-                if (NewGamePlus.CharacterHasLegacySkill(_character, __instance.Skill))
+                if (Plugin.CharacterHasLegacySkill(_character, __instance.Skill))
                 {
                     __result = true;
                     return false;
                 }
 
-                if (__instance.SiblingSlot != null && NewGamePlus.CharacterHasLegacySkill(_character, __instance.SiblingSlot.Skill))
+                if (__instance.SiblingSlot != null && Plugin.CharacterHasLegacySkill(_character, __instance.SiblingSlot.Skill))
                 {
                     __result = false;
                     return false;
