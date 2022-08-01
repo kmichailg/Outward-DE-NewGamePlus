@@ -88,7 +88,7 @@ namespace NewGamePlusDE
         // Choose a GUID for your project. Change "myname" and "mymod".
         public const string GUID = "com.kmichailg.newgameplusde";
         // Choose a NAME for your project, generally the same as your Assembly Name.
-        public const string NAME = "New Game +";
+        public const string NAME = "New Game Plus DE";
         // Increment the VERSION when you release a new version of your mod.
         public const string VERSION = "1.0.0";
 
