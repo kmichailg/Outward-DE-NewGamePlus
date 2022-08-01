@@ -1,10 +1,10 @@
 {
-    "name": "New Game Plus DE",
+    "name": "NewGamePlusDE",
     "version_number": "1.0.0",
     "website_url": "https://github.com/kmichailg/Outward-DE-NewGamePlus",
     "description": "Outward Definitive Edition - New Game Plus Mod",
     "dependencies": [
-        "BepInEx",
-        "SideLoader"
+		"sinai-dev-SideLoader-3.8.3",
+        "BepInEx-BepInExPack_Outward-5.4.8"
     ]
 }
