@@ -90,7 +90,7 @@ namespace NewGamePlusDE
         // Choose a NAME for your project, generally the same as your Assembly Name.
         public const string NAME = "New Game Plus DE";
         // Increment the VERSION when you release a new version of your mod.
-        public const string VERSION = "1.0.1";
+        public const string VERSION = "1.0.2";
 
         // For accessing your BepInEx Logger from outside of this class (eg Plugin.Log.LogMessage("");)
         internal static ManualLogSource Log;

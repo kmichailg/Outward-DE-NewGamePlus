@@ -1,5 +1,7 @@
 Ported and maintained version of the New Game+ by Kek | Kekasi
 
+## DISCLAIMER: Still undergoing tests, install at your own risk!
+
 ### Original Description
 Credit to Sinai for his tools, IggyTheMad for the icon, and everyone in the Outward Modding Discord for their help.
 
