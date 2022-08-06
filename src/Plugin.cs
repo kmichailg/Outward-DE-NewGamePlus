@@ -46,12 +46,12 @@ namespace NewGamePlusDE
         public override void ApplyLoadedSave(Character character, bool isWorldHost)
         {
             if (Plugin.SaveData.ContainsKey(character.UID))
-                Plugin.logboy.Log(LogLevel.Error, "Save Data already exists for " + character.Name);
+                Plugin.Log.Log(LogLevel.Error, "Save Data already exists for " + character.Name);
             Plugin.SaveData[character.UID] = this;
 
-            Plugin.logboy.Log(LogLevel.Message, "Loaded Legacy Level for " + character.Name + ": " + LegacyLevel);
+            Plugin.Log.Log(LogLevel.Message, "Loaded Legacy Level for " + character.Name + ": " + LegacyLevel);
             if (LegacySkills?.Length > 0)
-                Plugin.logboy.Log(LogLevel.Message, "Loaded LegacySkills for " + character.Name + ": " + LegacySkills.Length);
+                Plugin.Log.Log(LogLevel.Message, "Loaded LegacySkills for " + character.Name + ": " + LegacySkills.Length);
         }
 
         public static NewGameExtension CreateExtensionFor(string UID)
@@ -111,12 +111,9 @@ namespace NewGamePlusDE
         // Awake is called when your plugin is created. Use this to set up your mod.
         internal void Awake()
         {
-            cfgIsEnabled = Config.Bind("Settings", Settings.TransferExalted_Name, false, "Transfer Exalted & Life Drain on Creation");
-            cfgIsDeleteKeys = Config.Bind("Legacy Character Creation Settings", Settings.DisableNG_Name, false, "Disable Legacy Character Creation");
-            cfgIsTransferExalted = Config.Bind("Legacy Character Creation Settings", Settings.DeleteKeys_Name, true, "Delete Keys on Creation");
-
-            Instance = this;
-            logboy = Log;
+            cfgIsEnabled = Config.Bind("Legacy Character Creation Settings", Settings.DisableNG_Name, false, "Disable Legacy Character Creation");
+            cfgIsDeleteKeys = Config.Bind("Legacy Character Creation Settings", Settings.DeleteKeys_Name, true, "Delete Keys on Creation");
+            cfgIsTransferExalted = Config.Bind("Settings", Settings.TransferExalted_Name, false, "Transfer Exalted & Life Drain on Creation");
 
             StatusManager.InitializeEffects();
             SL.OnPacksLoaded += StatusManager.UpdateLevelData;
@@ -129,7 +126,7 @@ namespace NewGamePlusDE
 
             SettingsChanged();
 
-            Plugin.logboy.Log(LogLevel.Info, "New Game Plus DE starting...");
+            Plugin.Log.LogMessage("New Game Plus DE starting...");
         }
 
         internal void Update()
@@ -148,7 +145,9 @@ namespace NewGamePlusDE
         {
             if (itemList != null)
             {
+                Log.LogMessage("test before character get");
                 Character player = CharacterManager.Instance.GetFirstLocalCharacter();
+                Log.LogMessage("test after");
                 NewGameExtension player_nge = NewGameExtension.CreateExtensionFor(player.UID);
 
                 // Two Options
@@ -159,7 +158,7 @@ namespace NewGamePlusDE
                 else
                     player_nge.LegacyLevel = NewGameExtension.GetLegacyLevelFor(m_legacy.CharSave.CharacterUID) + 1;
 
-                logboy.Log(LogLevel.Message, "Loading Legacy Gear from " + m_legacy.CharSave.PSave.Name);
+                Log.Log(LogLevel.Message, "Loading Legacy Gear from " + m_legacy.CharSave.PSave.Name);
                 List<int> legacySkills = new List<int>();
 
                 player.Inventory.Pouch.SetSilverCount(m_legacy.CharSave.PSave.Money);
@@ -194,7 +193,7 @@ namespace NewGamePlusDE
                                         if (int.TryParse(silver, out int money))
                                             ((Bag)clone).Container.SetSilverCount(money);
                                         else
-                                            logboy.Log(LogLevel.Error, "Couldn't parse integer: " + silver);
+                                            Log.Log(LogLevel.Error, "Couldn't parse integer: " + silver);
                                     }
                                 }
                             }
@@ -205,7 +204,7 @@ namespace NewGamePlusDE
                 foreach (BasicSaveData data in itemList) {
                     Item item = ItemManager.Instance.GetItem(data.m_saveIdentifier.ToString());
                     if (item == null) {
-                        logboy.Log(LogLevel.Error, "Couldn't get Item -- " + data.m_saveIdentifier.ToString());
+                        Log.Log(LogLevel.Error, "Couldn't get Item -- " + data.m_saveIdentifier.ToString());
                     } else if (
                         !(item is Quest) &&
                         (
@@ -216,7 +215,7 @@ namespace NewGamePlusDE
                     ) {
                         int loc = data.SyncData.IndexOf("<Hierarchy>");
                         if (loc != -1) {
-                            //logboy.Log(LogLevel.Message, "Item: " + item.GetType() + " - " + item.Name + " - " + item.name + " - " + data.SyncData);
+                            //Log.Log(LogLevel.Message, "Item: " + item.GetType() + " - " + item.Name + " - " + item.name + " - " + data.SyncData);
                             int len = data.SyncData.IndexOf("<", loc + 11) - (loc + 11);
                             string type = data.SyncData.Substring(loc + 11, len);
                             if (type.StartsWith("1Pouch"))
@@ -246,7 +245,7 @@ namespace NewGamePlusDE
                                     case '3':
                                         if (!(item is Skill))
                                         {
-                                            logboy.Log(LogLevel.Error, "Can't learn a non-skill: " + item.Name);
+                                            Log.Log(LogLevel.Error, "Can't learn a non-skill: " + item.Name);
                                             break;
                                         }
                                         // Check for Push Kick, Throw Lantern, Fire/Reload, or Dagger Slash (tutorial event will give duplicates)
@@ -276,20 +275,20 @@ namespace NewGamePlusDE
 
                                         player.Inventory.TryUnlockSkill((Skill)item);
                                         if (!player.Inventory.LearnedSkill(item))
-                                            logboy.Log(LogLevel.Error, "Failed to learn skill: " + item.Name);
+                                            Log.Log(LogLevel.Error, "Failed to learn skill: " + item.Name);
                                         else
                                             legacySkills.Add(item.ItemID);
 
                                         break;
                                     default:
-                                        logboy.Log(LogLevel.Error, "Unknown Item Detected: " + item.Name + " - " + data.SyncData);
+                                        Log.Log(LogLevel.Error, "Unknown Item Detected: " + item.Name + " - " + data.SyncData);
                                         break;
                                 }
                             }
                         }
                         else
                         {
-                            logboy.Log(LogLevel.Error, "Hierarchy not found -- " + item.Name + " - " + data.SyncData);
+                            Log.Log(LogLevel.Error, "Hierarchy not found -- " + item.Name + " - " + data.SyncData);
                         }
                     }
                 }
@@ -305,8 +304,8 @@ namespace NewGamePlusDE
                 player.TargetingSystem.SetHelpLockCount(m_legacy.CharSave.PSave.HelpLockCount);
 
                 player_nge.LegacySkills = legacySkills.ToArray();
-                logboy.Log(LogLevel.Message, "Increasing Legacy Level to " + player_nge.LegacyLevel);
-                logboy.Log(LogLevel.Message, "Giving Character " + legacySkills.Count + " Legacy Skills");
+                Log.Log(LogLevel.Message, "Increasing Legacy Level to " + player_nge.LegacyLevel);
+                Log.Log(LogLevel.Message, "Giving Character " + legacySkills.Count + " Legacy Skills");
 
                 SaveData[player.UID] = player_nge;
 
@@ -338,7 +337,6 @@ namespace NewGamePlusDE
             return SaveData.TryGetValue(character.UID, out NewGameExtension nge) && nge.LegacySkills != null && nge.LegacySkills.Contains(skill.ItemID);
         }
 
-        public static ManualLogSource logboy;
         public static SaveInstance m_legacy;
         public static List<BasicSaveData> itemList;
 
@@ -464,7 +462,7 @@ namespace NewGamePlusDE
             [HarmonyPrefix]
             public static void Prefix(QuickSlot __instance, ref Character ___m_owner)
             {
-                //logboy.Log(LogLevel.Message, "QuickSlot Activation for " + __instance.ActiveItem.Name + " - " + (__instance.ItemAsSkill == null));
+                //Log.Log(LogLevel.Message, "QuickSlot Activation for " + __instance.ActiveItem.Name + " - " + (__instance.ItemAsSkill == null));
                 if (__instance.ActiveItem != null && !__instance.ItemIsSkill && __instance.ActiveItem is Skill)
                 {
                     Item skill = ___m_owner.Inventory.SkillKnowledge.GetItemFromItemID(__instance.ActiveItem.ItemID);
@@ -491,7 +489,7 @@ namespace NewGamePlusDE
                     if (SaveData.TryGetValue(_save.UID, out NewGameExtension nge))
                         nge.LegacyLevel = level;
                     else
-                        logboy.Log(LogLevel.Error, "Missing NewGameExtension for Loaded Save");
+                        Log.Log(LogLevel.Error, "Missing NewGameExtension for Loaded Save");
                 }
             }
         }
@@ -532,7 +530,7 @@ namespace NewGamePlusDE
                     Character player = CharacterManager.Instance.GetFirstLocalCharacter();
                     if (setMaxStats)
                     {
-                        logboy.Log(LogLevel.Message, "Resetting Stats");
+                        Log.Log(LogLevel.Message, "Resetting Stats");
                         player.Stats.RestoreAllVitals();
                         setMaxStats = false;
                         FixQuickSlots(player);
@@ -551,7 +549,7 @@ namespace NewGamePlusDE
                                     skills.Add(item.ItemID);
                             }
                             SaveData[player.UID].LegacySkills = skills.ToArray();
-                            Plugin.logboy.Log(LogLevel.Info, "Loaded LegacySkills for " + player.Name + ": " + skills.Count);
+                            Plugin.Log.Log(LogLevel.Info, "Loaded LegacySkills for " + player.Name + ": " + skills.Count);
                         }
 
                         // Check if debuffs exist, if not apply them

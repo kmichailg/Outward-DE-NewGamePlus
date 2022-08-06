@@ -60,7 +60,7 @@ namespace NewGamePlusDE
 
         public static void InitializeEffects()
         {
-            eff.SLPackName = "NewGamePlusDE";
+            eff.SLPackName = "kmichailg-NewGamePlusDE";
             eff.SubfolderName = "Stretched_Thin";
             eff.ApplyTemplate();
         }
